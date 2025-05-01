@@ -136,7 +136,11 @@ def selectNodesTypes(nd_to_sample, batch_size, nds):
 
 
 def fix_nodes(prev_mks, ind_fixed_nodes):
-    given_masks = torch.tensor(prev_mks)
+    # Convert prev_mks to torch tensor: clone if tensor or convert from numpy otherwise to avoid copy warnings
+    if torch.is_tensor(prev_mks):
+        given_masks = prev_mks.detach().clone()
+    else:
+        given_masks = torch.from_numpy(np.array(prev_mks)).float()
     ind_not_fixed_nodes = torch.tensor(
         [k for k in range(given_masks.shape[0]) if k not in ind_fixed_nodes]
     )
@@ -155,7 +159,8 @@ def _init_input(graph, prev_state=None, mask_size=64):
     # initialize graph
     given_nds, given_eds = graph
     given_nds = given_nds.float()
-    given_eds = torch.tensor(given_eds).long()
+    # Convert given_eds to torch LongTensor without using torch.tensor on tensor to avoid copy warnings
+    given_eds = torch.as_tensor(given_eds, dtype=torch.long)
     z = torch.randn(len(given_nds), 128).float()
     # unpack
     fixed_nodes = prev_state["fixed_nodes"]
@@ -165,7 +170,12 @@ def _init_input(graph, prev_state=None, mask_size=64):
         else prev_state["masks"]
     )
     # initialize masks
-    given_masks_in = fix_nodes(prev_mks, torch.tensor(fixed_nodes))
+    # Prepare fixed_nodes as a tensor without using torch.tensor on a tensor
+    if torch.is_tensor(fixed_nodes):
+        ind_fixed_nodes = fixed_nodes.long()
+    else:
+        ind_fixed_nodes = torch.as_tensor(fixed_nodes, dtype=torch.long)
+    given_masks_in = fix_nodes(prev_mks, ind_fixed_nodes)
     return z, given_masks_in, given_nds, given_eds
 
 
