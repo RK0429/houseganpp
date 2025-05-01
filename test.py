@@ -1,34 +1,16 @@
 import argparse
-import glob
-import math
 import os
-import random
-import sys
-import time
-from collections import defaultdict
 
-import cv2
-import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
-import svgwrite
 import torch
-import torch.autograd as autograd
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision.transforms as transforms
-import webcolors
-from PIL import Image, ImageDraw, ImageFont
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision.utils import save_image
+import torchvision.transforms as transforms  # type: ignore
+from torchvision.utils import save_image  # type: ignore
 
 from dataset.floorplan_dataset_maps_functional_high_res import (
     FloorplanGraphDataset,
     floorplan_collate_fn,
 )
-from misc.utils import ID_COLOR, _init_input, draw_graph, draw_masks, estimate_graph
+from misc.utils import _init_input, draw_graph, draw_masks
 from models.models import Generator
 
 # from models.models_improved import Generator
@@ -84,8 +66,6 @@ fp_loader = torch.utils.data.DataLoader(
     shuffle=False,
     collate_fn=floorplan_collate_fn,
 )
-# optimizers
-Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
 
 # run inference
@@ -106,7 +86,6 @@ def _infer(graph, model, prev_state=None):
 
 
 def main():
-    globalIndex = 0
     for i, sample in enumerate(fp_loader):
 
         # draw real graph and groundtruth
@@ -120,7 +99,6 @@ def main():
         _types = sorted(list(set(real_nodes)))
         selected_types = [_types[: k + 1] for k in range(10)]
         os.makedirs("./{}/".format(opt.out), exist_ok=True)
-        _round = 0
 
         # initialize layout
         state = {"masks": None, "fixed_nodes": []}
