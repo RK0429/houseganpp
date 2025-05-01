@@ -1,9 +1,12 @@
 import argparse
+import json
 import os
 
+import cv2
 import numpy as np
 import torch
 import torchvision.transforms as transforms  # type: ignore
+import yaml
 from torchvision.utils import save_image  # type: ignore
 
 from dataset.floorplan_dataset_maps_functional_high_res import (
@@ -37,6 +40,13 @@ parser.add_argument(
     help="path to dataset list file",
 )
 parser.add_argument("--out", type=str, default="./dump", help="output folder")
+parser.add_argument(
+    "--save_format",
+    "-f",
+    choices=["png", "json", "yaml", "svg"],
+    default="png",
+    help="output format (png, json, yaml, svg)",
+)
 opt = parser.parse_args()
 print(opt)
 
@@ -120,9 +130,38 @@ def main():
         # save final floorplans
         imk = draw_masks(masks.copy(), real_nodes)
         imk = torch.tensor(np.array(imk).transpose((2, 0, 1))) / 255.0
-        save_image(
-            imk, "./{}/fp_final_{}.png".format(opt.out, i), nrow=1, normalize=False
-        )
+        if opt.save_format == "png":
+            save_image(imk, f"{opt.out}/fp_final_{i}.png", nrow=1, normalize=False)
+        elif opt.save_format in ("json", "yaml"):
+            data = {"nodes": real_nodes.tolist(), "masks": masks.tolist()}
+            out_file = os.path.join(opt.out, f"fp_final_{i}.{opt.save_format}")
+            with open(out_file, "w") as f:
+                if opt.save_format == "json":
+                    json.dump(data, f, indent=2)
+                else:
+                    yaml.dump(data, f, default_flow_style=False)
+        elif opt.save_format == "svg":
+            h, w = masks.shape[1], masks.shape[2]
+            svg_lines = [
+                f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}">'
+            ]
+            for nd, mask in zip(real_nodes, masks):
+                binary = (mask > 0).astype("uint8") * 255
+                contours, _ = cv2.findContours(
+                    binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
+                for cnt in contours:
+                    pts = cnt.squeeze()
+                    if pts.ndim != 2:
+                        continue
+                    points_str = " ".join(f"{x},{y}" for x, y in pts.tolist())
+                    svg_lines.append(
+                        f'<polygon points="{points_str}" fill="none" stroke="black" id="room_{nd}" />'
+                    )
+            svg_lines.append("</svg>")
+            out_file = os.path.join(opt.out, f"fp_final_{i}.svg")
+            with open(out_file, "w") as f:
+                f.write("\n".join(svg_lines))
 
 
 if __name__ == "__main__":
