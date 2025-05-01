@@ -302,10 +302,12 @@ def draw_graph(g_true):
     #     print(len(edgecolors))
 
     plt.figure()
+    ax = plt.gca()
     pos = nx.nx_agraph.graphviz_layout(G_true, prog="neato")
     nx.draw(
         G_true,
         pos,
+        ax=ax,
         node_size=node_size,
         linewidths=linewidths,
         node_color=colors_H,
@@ -431,11 +433,13 @@ def estimate_graph(masks, nodes, G_gt):
 
     # visualization - debug
     plt.figure()
+    ax = plt.gca()
     pos = nx.nx_agraph.graphviz_layout(G_estimated_complete, prog="neato")
     weights = [4 for u, v in G_estimated_complete.edges()]
     nx.draw(
         G_estimated_complete,
         pos,
+        ax=ax,
         edge_color=colors,
         linewidths=linewidths,
         edgecolors=edgecolors,
